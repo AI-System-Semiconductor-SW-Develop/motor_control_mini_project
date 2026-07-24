@@ -31,7 +31,6 @@ volatile int TIM4_Expired = 0U;			//TIM4 Expired INT flag
 
 volatile int Uart_Data_In = 0U;			//UART INT flag
 volatile MOTOR_SPEED curr_motor_speed = SPD_5;
-;
 
 volatile MOTOR_STATE next_state = 0;
 

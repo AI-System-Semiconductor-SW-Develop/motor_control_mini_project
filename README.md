@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 모터 인터럽트 제어 상위설계서
 
 ## 1. 프로젝트 개요
@@ -253,6 +254,13 @@ flowchart TD
 외부 버튼 인터럽트, USART 수신 인터럽트, TIMER 인터럽트를 이용하여 모터의 회전 방향과 속도 정지 상태를 제어하는 프로젝트 입니다.
 
 각 인터럽트 서비스 루틴에서 입력을 확이하고 이벤트 플래그만 설정하며, 실제 모터 상태 변경과 제어는 Main Loop에서 실행합니다.
+=======
+# Motor_Contorl_Mini_Project
+
+버튼 입력 시간을 판단하여 모터의 **시계 방향 회전**, **반시계 방향 회전**, **정지** 상태를 제어하는 프로젝트입니다.
+
+버튼을 짧게 누르면 모터의 동작 또는 회전 방향이 변경되고, 버튼을 3초 이상 누르면 모터가 정지합니다.
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 ---
 
@@ -260,11 +268,19 @@ flowchart TD
 
 1. [프로젝트 개요](#overview)
 2. [Revision History](#revision)
+<<<<<<< HEAD
 3. [Event & Action](#event&action)
 4. [Type 정의](#datatype)
 5. [변수 정의](#variable)
 6. [함수 정의](#function)
 7. [FSM](#FSM)
+=======
+3. [자료형 정의](#datatype)
+4. [변수 정의](#variable)
+5. [함수 정의](#function)
+6. [FSM](#FSM)
+7. [event&action](#event&action)
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 8. [Flowchart](#Flowchart)
 
 ---
@@ -276,12 +292,21 @@ flowchart TD
 
 | 기능 | 설명 |
 |---|---|
+<<<<<<< HEAD
 | Key Interrupt | 버튼의 누름과 버튼 해제 이벤트 감지 |
 | UART2 RX Inerrupt | UART로 PWM Duty 명령 수신 |
 | Timer Interrupt | 버튼을 3초 이상 누르는 long press 판단 |
 | TIM5 PWM| 10KHz PWM을 이용한 모터 속도 제어|
 | Motor FSM | 정지, 시계 방향, 반시계 방향 상태 관리 |
 | 방향 전환 보호 | 방향 전환 전 모터를 짧게 정지하여 부하 감소 |
+=======
+| 버튼 입력 감지 | 버튼의 Falling Edge와 Rising Edge를 이용하여 입력 상태 확인 |
+| 짧게 누르기 | 모터를 회전시키거나 현재 회전 방향 변경 |
+| 길게 누르기 | 버튼을 3초 이상 누르면 모터 정지 |
+| 방향 전환 보호 | 방향 전환 전 모터를 짧게 정지하여 부하 감소 |
+| Timer2 사용 | 버튼을 누르고 있는 시간을 측정 |
+| FSM 제어 | 모터 상태에 따라 시계 방향, 반시계 방향, 정지 동작 수행 |
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 ### 참여 인원
 
@@ -295,6 +320,7 @@ flowchart TD
 | NO. | DATE | Revision Record | REV. |
 |---:|:---:|---|:---:|
 | 1 | 2026.07.22 | Top Level Designs<br>모터 버튼 제어 | REV. 1.0 |
+<<<<<<< HEAD
 | 2 | 2026.07.24 | Top Level Designs<br>모터 버튼 제어 | REV. 2.0 |
 
 ---
@@ -361,6 +387,15 @@ Long Press와 Short Press가 중복 처리되지 않도록 한다.
 ## 4. Type Definition
 
 ### 4.1 `MOTOR_STATE`
+=======
+
+---
+<a name="datatype"></a>
+
+## 3. Type Definition
+
+### 3.1 `MOTOR_STATE`
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 모터의 현재 동작 상태를 나타내는 열거형입니다.
 
@@ -379,7 +414,11 @@ typedef enum
 | `TURN_COUNTER_CLOCKWISE` | 1 | 모터 반시계 방향 회전 |
 | `STOP` | 2 | 모터 정지 |
 
+<<<<<<< HEAD
 ### 4.2 `BTN_STATE`
+=======
+### 3.2 `BTN_STATE`
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 버튼이 눌려 있는지를 나타내는 열거형입니다.
 
@@ -399,7 +438,11 @@ typedef enum
 ---
 <a name="variable"></a>
 
+<<<<<<< HEAD
 ## 5. Flag Variable
+=======
+## 4. Flag Variable
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 | 변수명 | 자료형 | 설명 |
 |---|---|---|
@@ -408,10 +451,25 @@ typedef enum
 | `is_timer_started` | `uint8_t` | 타이머의 동작 여부 표시 |
 | `is_timer_timeout` | `uint8_t` | 타이머 Timeout 발생 여부 표시 |
 
+<<<<<<< HEAD
 ---
 <a name="function"></a>
 
 ## 6. Function Definition
+=======
+### Button State Value
+
+| 버튼 상태 | 값 |
+|---|---:|
+| Pressed | 1 |
+| Released | 0 |
+
+---
+
+<a name="function"></a>
+
+## 5. Function Definition
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 | NO. | 함수명 | 반환형 | 매개변수 | 기능 |
 |---:|---|---|---|---|
@@ -429,10 +487,17 @@ typedef enum
 
 <a name="FSM"></a>
 
+<<<<<<< HEAD
 ## 7. Motor Control FSM
 <img width="4096" height="2880" alt="image" src="https://github.com/user-attachments/assets/7ce9a23e-e5f9-4fc5-bce0-a3351324f343" />
 
 ### 7.1 Motor Control FSM State Definition
+=======
+## 6. Motor Control FSM
+<img width="4096" height="2880" alt="image" src="https://github.com/user-attachments/assets/7ce9a23e-e5f9-4fc5-bce0-a3351324f343" />
+
+### 6.1 Motor Control FSM State Definition
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 | State | 설명 |
 |---|---|
@@ -441,14 +506,22 @@ typedef enum
 | `TURN_COUNTER_CLOCKWISE` | 모터 반시계 방향 회전 |
 | `SHORT_STOP` | 방향 전환 시 모터 부하를 줄이기 위한 짧은 정지 |
 
+<<<<<<< HEAD
 ### 7.2 Motor Control FSM State Transition
+=======
+### 6.2 Motor Control FSM State Transition
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 | State Transition | 설명 |
 |---|---|
 | Button Press | 버튼 입력에 따라 모터 동작 상태 변경 |
 | Timer2 Timeout | Timer2 Timeout 발생 시 모터 정지 |
 
+<<<<<<< HEAD
 ### 7.3 State Transition 
+=======
+### 6.3 State Transition 
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 | 현재 상태 | 이벤트 | 중간 동작 | 다음 상태 |
 |---|---|---|---|
@@ -461,6 +534,22 @@ typedef enum
 
 ---
 
+<<<<<<< HEAD
+=======
+<a name="event&action"></a>
+
+## 7. Event & Action
+
+| Event | Action Requirement | Action |
+|---|---|---|
+| Key Pressed | 버튼이 처음 눌렸을 때 | 3초 Timer2 시작 |
+| Key Released | Timeout 발생 전에 버튼을 뗐을 때 | Timer2 정지 및 현재 모터 상태에 따라 모터 제어 |
+| Key Pressed | 버튼을 눌렀다가 떼었고 모터가 회전 중인 경우 | 모터 회전 방향 전환 |
+| TIM2 Timeout | 버튼을 누르고 있는 동안 Timeout 발생 | UIF 확인 후 모터 정지 |
+
+---
+
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 <a name="Flowchart"></a>
 
 ## 8. Flow Chart
@@ -497,6 +586,27 @@ typedef enum
 
 ---
 
+<<<<<<< HEAD
+=======
+## 최종 동작 정리
+
+```text
+1. 전원이 공급되면 시스템을 초기화하고 모터를 정지한다.
+
+2. 버튼을 처음 누르면 Falling Edge를 감지한다.
+
+3. Falling Edge가 감지되면 3초 Timer2를 시작한다.
+
+4. 3초 전에 버튼을 떼면 Rising Edge를 감지한다.
+
+5. 현재 모터가 정지 상태라면 시계 방향으로 회전한다.
+
+6. 현재 모터가 회전 중이라면 잠시 정지한 후 반대 방향으로 회전한다.
+
+7. 버튼을 누른 상태로 3초가 지나면 Timer2 Timeout이 발생한다.
+
+8. Timeout이 발생하면 모터를 정지하고 관련 플래그를 초기화한다.
+>>>>>>> 52649a80ebe9a69a76d9a99bc1c86af4209db859
 
 9. 현재 state 값에 따라 모터 제어 함수를 실행한다.
 

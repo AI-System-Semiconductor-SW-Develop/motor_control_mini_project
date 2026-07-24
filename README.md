@@ -1,4 +1,4 @@
-# Motor_Control_Mini_Project (sh)
+# Motor_Control_Mini_Project
 
 외부 버튼 인터럽트, USART2 수신 인터럽트, TIMER 인터럽트를 이용하여 모터의 회전 방향과 속도, 정지 상태를 제어하는 프로젝트입니다.
 

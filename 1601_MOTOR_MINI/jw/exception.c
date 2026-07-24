@@ -15,14 +15,14 @@ extern volatile KEY_STATE key_state;
 void EXTI15_10_IRQHandler(void)     //Key Falling/Rising EXTI
 {
     printf("KEY INTERRUPT !!!\n");
-    if(EXTI->PR && (0x1 <<PC13)){      //PC13 pending 여부 확인
+    if(EXTI->PR && (0x1 << PORTC_BTN_PIN)){      //PC13 pending 여부 확인
         if(Key_Get_Pressed()){
             key_state = IS_PRESSED;    //falling
         }
         else key_state = IS_RELEASED;   //rising
         
-        EXTI->PR = 0x1 << PC13;             //PC13 Pending Clear
-        NVIC_ClearPendingIRQ(EXTI15_10);   //NVIC Pending Clear        
+        EXTI->PR = 0x1 << PORTC_BTN_PIN;             //PC13 Pending Clear
+        NVIC_ClearPendingIRQ(EXTI15_10_IRQn);   //NVIC Pending Clear        
     }
 }
 
@@ -34,7 +34,7 @@ void TIM2_IRQHandler(void)      //TIM2 Expired INT
     TIM2_Expired = 1;
 
     Macro_Clear_Bit(TIM2->SR, 0);           // TIM2 Interrupt Pending Clear
-	NVIC_ClearPendingIRQ(TIM2_INT_POS);     // NVIC Pending Clear
+	NVIC_ClearPendingIRQ(TIM2_IRQn);     // NVIC Pending Clear
 }
 
 extern volatile int TIM4_Expired;
@@ -45,7 +45,7 @@ void TIM4_IRQHandler(void)
     TIM4_Expired = 1;
 
     Macro_Clear_Bit(TIM4->SR, 0);           // TIM4 Interrupt Pending Clear
-	NVIC_ClearPendingIRQ(TIM4_INT_POS);     // NVIC Pending Clear
+	NVIC_ClearPendingIRQ(TIM4_IRQn);     // NVIC Pending Clear
 }
 
 extern volatile int Uart_Data_In;
@@ -72,6 +72,6 @@ void USART2_IRQHandler(void)
     }
 
     printf("motor speed: %d\n", curr_motor_speed);
-    NVIC_ClearPendingIRQ((IRQn_Type)38);    // NVIC Pending Clear
+    NVIC_ClearPendingIRQ(USART2_IRQn);    // NVIC Pending Clear
 
 }

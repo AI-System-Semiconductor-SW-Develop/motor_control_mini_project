@@ -18,18 +18,19 @@ void TIM2_3sec_Timer_Start(void){
 
 	Macro_Set_Bit(RCC->APB1ENR, 0);		//TMR2 en set
 
-	//URS(Bit2) 설정, over/underflow발생시에만 UIF set
+	//TIMx->CR1: URS(Bit2) 설정, over/underflow발생시에만 UIF set
 	Macro_Write_Block(TIM2->CR1, 0x7, 0x7, 2);		//down count, one pulse, URS
+
 	TIM2->PSC = (int)(TIMXCLK/TIM2_FREQ +0.5) - 1;	//분주비 1920, 50kHz
 	TIM2->ARR = 150000;
 
 	Macro_Set_Bit(TIM2->EGR, 0);	//Update event Generation
 
 	Macro_Clear_Bit(TIM2->SR, 0);			// TIM4 Pending Clear
-	NVIC_ClearPendingIRQ(TIM2_INT_POS);		// NVIC Pending Clear
+	NVIC_ClearPendingIRQ(TIM2_IRQn);		// NVIC Pending Clear
 
 	Macro_Set_Bit(TIM2->DIER, 0);		// TIM4 Interrupt Enable
-	NVIC_EnableIRQ(TIM2_INT_POS);		// NVIC Interrupt Enable
+	NVIC_EnableIRQ(TIM2_IRQn);		// NVIC Interrupt Enable
 
 	Macro_Set_Bit(TIM2->CR1, 0);	//TIM2 Start
 }
@@ -38,7 +39,7 @@ void TIM2_3sec_Timer_Start(void){
 int TIM2_Check_Timeout(void){
 
 	if(Macro_Check_Bit_Set(TIM2->SR, 0)){
-		printf("Timeout !!!\n");
+		//printf("Timeout !!!\n");
 		Macro_Clear_Bit(TIM2->SR, 0);	//flag clear
 		return 1;
 	}
@@ -48,14 +49,14 @@ int TIM2_Check_Timeout(void){
 
 void TIM2_Stop(void)
 {
-	printf("timer stop\n");
+	//printf("timer stop\n");
 	Macro_Clear_Bit(TIM2->CR1, 0);
 
 	Macro_Clear_Bit(TIM2->DIER, 0);  // 인터럽트 비활성화
-    NVIC_DisableIRQ(28);             // NVIC 비활성화
+    NVIC_DisableIRQ(TIM2_IRQn);             // NVIC 비활성화
     
     Macro_Clear_Bit(TIM2->SR, 0);    // UIF 펜딩 클리어
-    NVIC_ClearPendingIRQ(28);        // NVIC 펜딩 클리어
+    NVIC_ClearPendingIRQ(TIM2_IRQn);        // NVIC 펜딩 클리어
 }
 
 /* TIMER 4: 딜레이용 */
@@ -63,20 +64,21 @@ void TIM2_Stop(void)
 void TIM4_Delay_Interrupt_Enable(int time)
 {
 	// TIM4 Clock On
-	Macro_Set_Bit(RCC->APB1ENR, 2);
+	Macro_Set_Bit(RCC->APB1ENR, 2);		//TMR4 en set
 	
-	Macro_Clear_Bit(TIM4->CR1, 0);	//TIM4 stop
+	Macro_Clear_Bit(TIM4->CR1, 0);		//TIM4 stop
 	Macro_Write_Block(TIM4->CR1, 0x7, 0x7, 2);		//down count, one pulse, URS
+
 	TIM4->PSC = (unsigned int)(TIMXCLK/(double)TIM4_FREQ + 0.5)-1;
 	TIM4->ARR = TIME4_PLS_OF_1ms * time;
 
 	Macro_Set_Bit(TIM4->EGR,0);			//Update event
 
 	Macro_Clear_Bit(TIM4->SR, 0);		// TIM4 Pending Clear
-	NVIC_ClearPendingIRQ(30);			// NVIC Pending Clear
+	NVIC_ClearPendingIRQ(TIM4_IRQn);	// NVIC Pending Clear
 
 	Macro_Set_Bit(TIM4->DIER, 0);		// TIM4 Interrupt Enable
-	NVIC_EnableIRQ(30);					// NVIC Interrupt Enable
+	NVIC_EnableIRQ(TIM4_IRQn);			// NVIC Interrupt Enable
 
 	Macro_Set_Bit(TIM4->CR1, 0);		// TIM4 Start
 }

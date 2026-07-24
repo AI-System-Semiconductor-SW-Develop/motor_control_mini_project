@@ -1,5 +1,5 @@
 #include "device_driver.h"
-
+#if 1
 void LED_Init(void)
 {
 	/* 아래 코드 수정 금지 : Port-A Clock Enable */
@@ -22,3 +22,4 @@ void LED_Off(void)
 	// LED Off
 	Macro_Clear_Bit(GPIOA->ODR, 5); 
 }
+#endif

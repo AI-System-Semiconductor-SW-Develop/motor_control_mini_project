@@ -6,9 +6,8 @@ static void Sys_Init(int baud)
 	SCB->CPACR |= (0x3 << 10*2)|(0x3 << 11*2); 
 	Clock_Init();
 	Uart2_Init(baud);
-	Uart1_Init(baud);
-	setvbuf(stdout, NULL, _IONBF, 0);
 	LED_Init();
+	setvbuf(stdout, NULL, _IONBF, 0);
 }
 
 #if 1 	//REV 1.1
@@ -24,13 +23,13 @@ static void Sys_Init(int baud)
 */
 
 /* Global Variable Definition */
-volatile KEY_STATE key_state = 0U;		//Key Press/Release INT flag
+volatile KEY_STATE key_state = KEY_IDLE;		//Key Press/Release INT flag
 
 volatile int TIM2_Expired = 0U;			//TIM2 Expired INT flag
 volatile int TIM4_Expired = 0U;			//TIM4 Expired INT flag
 
 volatile int Uart_Data_In = 0U;			//UART INT flag
-volatile MOTOR_SPEED curr_motor_speed = SPD_5;
+volatile MOTOR_SPEED curr_motor_speed = SPD_DEFAULT;
 
 volatile MOTOR_STATE next_state = 0;
 
@@ -41,14 +40,14 @@ void Main(void)
 	Sys_Init(115200);
 	GPIO_Init();
 	TIM5_Out_Init();					//PWM Enable
-	printf("\nMotor_test_rev1.1\n");
+	printf("\nMotor_Test_REV1.2\n");
 			
 	/* Variable Definition */
 	MOTOR_STATE motor_state = STOP;		// 모터 상태 정지로 초기화
 	int is_timer_started = 0; 			// 타이머가 현재 동작 중인지, 1: 동작중(타임아웃 이전)
 
 	/* Interrupt Enable */
-	Key_ISR_Enable(1);					//Key Rising/Fallind Edge INT
+	Key_ISR_Enable();					//Key Rising/Fallind Edge INT
 	Uart2_RX_Interrupt_Enable();		//Uart RX INT Enable
 	//TIM2, TIM4는 타이머 실행 함수에 INT를 함께 허용해놓아서 다로 Enable함수를 호춣하지 않음.
 

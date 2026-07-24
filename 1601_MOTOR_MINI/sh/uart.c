@@ -41,8 +41,8 @@ void Uart2_RX_Interrupt_Enable(void)
     (void)USART2->DR;                //clear하고 싶으면 clear
 
     Macro_Set_Bit(USART2->CR1, 5);          // USART2 RX Interrupt Enable
-    NVIC_ClearPendingIRQ((IRQn_Type)38);    // NIVC Pending Clear
-    NVIC_EnableIRQ((IRQn_Type)38);          // NVIC Interrupt Enable
+    NVIC_ClearPendingIRQ(USART2_IRQn);    // NIVC Pending Clear
+    NVIC_EnableIRQ(USART2_IRQn);          // NVIC Interrupt Enable
 }
 
 void Uart2_Send_Byte(char data)
@@ -56,6 +56,8 @@ void Uart2_Send_Byte(char data)
   while(!Macro_Check_Bit_Set(USART2->SR, 7));
   USART2->DR = data;
 }
+
+#if 0
 
 void Uart1_Init(int baud)
 {
@@ -81,7 +83,7 @@ void Uart1_Init(int baud)
   USART1->CR3 = 0;
 }
 
-#if 0
+
 void Uart1_Init(int baud)
 {
   double div;
@@ -111,7 +113,7 @@ void Uart1_Init(int baud)
   USART1->CR2 = 0 << 12;
   USART1->CR3 = 0;
 }
-#endif
+
 
 void Uart1_Send_Byte(char data)
 {
@@ -162,3 +164,4 @@ char Uart1_Get_Char(void)
 	while(!Macro_Check_Bit_Set(USART1->SR, 5));
 	return (char)USART1->DR;
 }
+#endif

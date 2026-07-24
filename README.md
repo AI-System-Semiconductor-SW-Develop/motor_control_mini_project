@@ -170,6 +170,7 @@ typedef enum
 |---|---:|---|
 | `IS_RELEASED` | 0 | 버튼을 뗀 상태 |
 | `IS_PRESSED` | 1 | 버튼을 누른 상태 |
+| `KEY_IDLE`| | 처리할 버튼 이벤트가 없는 상태 |
 
 ---
 <a name="variable"></a>

@@ -216,13 +216,13 @@ typedef enum t_MOTOR_SPEED
 | 7 | `TIM4_Delay_Interrupt_Enable` | `void` | `int time` | 지정 시간(ms) 후 TIM4 인터럽트 발생, Short Stop용 |
 | 8 | `TIM5_Out_Init` | `void` | `void` | TIM5 PWM 출력(CH1, CH2) 초기화 |
 | 9 | `TIM5_PWM_Generation` | `void` | `int duty` | 10kHz PWM Duty(%) 설정, 모터 속도 반영 |
-| 10 | `Toggle_Motor_State` | `void` | `MOTOR_STATE *state` | 버튼 Short Press 시 모터 상태 토글(STOP→CW→SHORT_STOP↔SHORT_STOP) |
-| 11 | `Toggle_with_Short_Stop` | `void` | `MOTOR_STATE *state, MOTOR_STATE next_state` | Short Stop 이후 예약된 방향으로 회전 재개 |
+| 10 | `Toggle_Motor_State` | `void` | `MOTOR_STATE *state` | 버튼 Short Press 시 다음 회전 방향 예약 |
+| 11 | `Toggle_with_Short_Stop` | `void` | `MOTOR_STATE *state, MOTOR_STATE next_state` | Short Stop(TIM4 expired) 이후 예약된 방향으로 회전 재개 |
 | 12 | `Motor_Stop` | `void` | `void` | 모터 정지(GPIO Stop 모드 전환) |
-| 13 | `Motor_Short_Stop` | `void` | `void` | 모터 정지 후 200ms TIM4 인터럽트 예약 |
+| 13 | `Motor_Short_Stop` | `void` | `void` | 모터 정지 후 TIM4 200ms 타이머 시작 |
 | 14 | `Motor_CW` | `void` | `void` | 모터 정회전(GPIO Alternate/Output 모드 전환) |
 | 15 | `Motor_CCW` | `void` | `void` | 모터 역회전(GPIO Alternate/Output 모드 전환) |
-| 16 | `GPIO_Mode_CW` / `GPIO_Mode_CCW` / `GIPO_Mode_Stop` | `void` | `void` | 회전 방향에 따른 PA0/PA1 핀 모드(PWM/Output) 전환 |
+| 16 | `GPIO_Mode_CW` / `GPIO_Mode_CCW` / `GIPO_Mode_Stop` | `void` | `void` | 회전 방향에 따른 PA0/PA1 핀 모드(PWM/Output) 설정 |
 
 ---
 

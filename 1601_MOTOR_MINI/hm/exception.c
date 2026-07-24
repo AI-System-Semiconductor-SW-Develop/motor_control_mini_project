@@ -1,6 +1,7 @@
 #include "device_driver.h"
 #include <stdio.h>
 
+
 void _Invalid_ISR(void)
 {
 	unsigned int r = Macro_Extract_Area(SCB->ICSR, 0x1ff, 0);
@@ -9,54 +10,68 @@ void _Invalid_ISR(void)
 	for(;;);
 }
 
-extern volatile int Key_Pressed;
-extern volatile int Key_Released;
-extern volatile int Key_State;
+extern volatile KEY_STATE key_state;
 
-void EXTI9_5_IRQHandler(void)
+void EXTI15_10_IRQHandler(void)     //Key Falling/Rising EXTI
 {
-
-	if (Key_Get_Pressed())
-	{
-		if(Key_State==0)
-		{
-			Key_State = 1;
-			Key_Pressed = 1;
-		}
-	
-	}
-	else
-	{
-		if (Key_State == 1)
-		{
-			Key_Released = 1;
-			Key_State = 0;
-		}
-	}
-	
-
-	EXTI->PR = 0x1 << 7;
-	NVIC_ClearPendingIRQ(23);
+    printf("KEY INTERRUPT !!!\n");
+    if(EXTI->PR && (0x1 <<PC13)){      //PC13 pending 여부 확인
+        if(Key_Get_Pressed()){
+            key_state = IS_PRESSED;    //falling
+        }
+        else key_state = IS_RELEASED;   //rising
+        
+        EXTI->PR = 0x1 << PC13;             //PC13 Pending Clear
+        NVIC_ClearPendingIRQ(EXTI15_10);   //NVIC Pending Clear        
+    }
 }
 
-extern volatile int Uart_Data_In;
-extern volatile unsigned char Uart_Data;
+extern volatile int TIM2_Expired;
 
-void USART2_IRQHandler(void)
+void TIM2_IRQHandler(void)      //TIM2 Expired INT
 {
-	Uart_Data = (unsigned char)USART2->DR;
-	Uart_Data_In = 1;
-	NVIC_ClearPendingIRQ(38);
+    printf("TIMER2 Expired !!!\n");
+    TIM2_Expired = 1;
+
+    Macro_Clear_Bit(TIM2->SR, 0);           // TIM2 Interrupt Pending Clear
+	NVIC_ClearPendingIRQ(TIM2_INT_POS);     // NVIC Pending Clear
 }
 
 extern volatile int TIM4_Expired;
 
 void TIM4_IRQHandler(void)
 {
-	// TIM4 Interrupt Pending Clear
-	Macro_Clear_Bit(TIM4->SR,0);
-	// NVIC Pending Clear
-	NVIC_ClearPendingIRQ(30);
-	
-	TIM4_Expired = 1;
+    printf("TIMER4 Expired !!!\n");
+    TIM4_Expired = 1;
+
+    Macro_Clear_Bit(TIM4->SR, 0);           // TIM4 Interrupt Pending Clear
+	NVIC_ClearPendingIRQ(TIM4_INT_POS);     // NVIC Pending Clear
+}
+
+extern volatile int Uart_Data_In;
+extern volatile MOTOR_SPEED curr_motor_speed;
+const MOTOR_SPEED speed_table[10] = {
+	SPD_1, SPD_2, SPD_3, SPD_4, 
+    SPD_5, SPD_6, SPD_7, SPD_8, SPD_9
+};
+
+
+void USART2_IRQHandler(void)
+{
+    Uart_Data_In = 1;
+
+    char rx_table_num = USART2->DR;
+
+    if (rx_table_num > '0' && rx_table_num <= '9') 
+    {
+        int index = rx_table_num - '0' - 1;
+        curr_motor_speed = speed_table[index];
+    }
+    else{
+        printf("SPEED SET WRONG !!!\n");
+    }
+
+    printf("motor speed: %d\n", curr_motor_speed);
+    NVIC_ClearPendingIRQ((IRQn_Type)38);    // NVIC Pending Clear
+
 }

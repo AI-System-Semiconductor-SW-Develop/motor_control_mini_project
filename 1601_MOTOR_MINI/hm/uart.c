@@ -35,6 +35,16 @@ void Uart2_Init(int baud)
   USART2->CR3 = 0;
 }
 
+void Uart2_RX_Interrupt_Enable(void)
+{
+    //수신 버퍼 읽으면 자동으로 clear니까 굳이 안 해도 되지만
+    (void)USART2->DR;                //clear하고 싶으면 clear
+
+    Macro_Set_Bit(USART2->CR1, 5);          // USART2 RX Interrupt Enable
+    NVIC_ClearPendingIRQ((IRQn_Type)38);    // NIVC Pending Clear
+    NVIC_EnableIRQ((IRQn_Type)38);          // NVIC Interrupt Enable
+}
+
 void Uart2_Send_Byte(char data)
 {
   if(data == '\n')
@@ -47,21 +57,31 @@ void Uart2_Send_Byte(char data)
   USART2->DR = data;
 }
 
-void Uart2_RX_Interrupt_Enable(int en)
+void Uart1_Init(int baud)
 {
-  if(en)
-  {
-    Macro_Set_Bit(USART2->CR1, 5);
-    NVIC_ClearPendingIRQ(38);
-    NVIC_EnableIRQ(38);
-  }
-  else
-  {
-    Macro_Clear_Bit(USART2->CR1, 5);
-    NVIC_DisableIRQ(38);
-  }
+  double div;
+  unsigned int mant;
+  unsigned int frac;
+
+  Macro_Set_Bit(RCC->AHB1ENR, 0);                   // PA9,10
+  Macro_Set_Bit(RCC->APB2ENR, 4);                   // USART1 ON
+  Macro_Write_Block(GPIOA->MODER, 0xf, 0xa, 18);    // PA9,10 => ALT
+  Macro_Write_Block(GPIOA->AFR[1], 0xff, 0x77, 4);  // PA9,10 => AF07
+  Macro_Write_Block(GPIOA->PUPDR, 0xf, 0x5, 18);    // PA9,10 => Pull-Up
+
+  div = PCLK2 / (16. * baud);
+  mant = (int)div;
+  frac = (int)((div - mant) * 16 + 0.5);
+  mant += frac >> 4;
+  frac &= 0xf;
+  USART1->BRR = (mant<<4)|(frac<<0);
+
+  USART1->CR1 = (1<<13)|(0<<12)|(0<<10)|(1<<3)|(1<<2);
+  USART1->CR2 = 0 << 12;
+  USART1->CR3 = 0;
 }
 
+#if 0
 void Uart1_Init(int baud)
 {
   double div;
@@ -91,6 +111,7 @@ void Uart1_Init(int baud)
   USART1->CR2 = 0 << 12;
   USART1->CR3 = 0;
 }
+#endif
 
 void Uart1_Send_Byte(char data)
 {

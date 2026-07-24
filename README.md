@@ -4,6 +4,10 @@
 
 각 인터럽트 서비스 루틴(ISR)에서는 입력을 확인하고 이벤트 플래그만 설정하며, 실제 모터 상태 변경과 제어는 Main Loop에서 실행합니다.
 
+[GitHub 바로가기](https://github.com/AI-System-Semiconductor-SW-Develop/motor_control_mini_project)
+
+GitHub 주소: `https://github.com/AI-System-Semiconductor-SW-Develop/motor_control_mini_project`
+
 ---
 
 ## 목차

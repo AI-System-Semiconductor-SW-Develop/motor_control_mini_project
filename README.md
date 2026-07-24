@@ -22,7 +22,13 @@
 
 ## 1. 프로젝트 개요
 
-### 주요 기능
+### 1-1. FSM
+
+<img width="1109" height="579" alt="image" src="https://github.com/user-attachments/assets/2122271e-6ee1-4e71-ae60-7b71b5ba0ad4" />
+<br>
+
+### 1-2. 주요 기능
+<br>
 
 | 기능 | 설명 |
 |---|---|
@@ -32,31 +38,42 @@
 | TIM4 Interrupt | 방향 전환 시 Short Stop(짧은 정지) 후 반대 방향 회전 재개 |
 | TIM5 PWM | 10KHz PWM으로 모터 속도(Duty) 제어 |
 | Motor FSM | 정지(STOP), 정회전(CW), 역회전(CCW), 짧은 정지(SHORT_STOP) 상태 관리 |
+<br>
 
-### 참여 인원
+### 1-3. 참여 인원
+<br>
 
 **혜민** **서희** **재우**
+<br>
+<br>
 
 ---
 <a name="revision"></a>
 
 ## 2. Revision History
+<br>
 
 | NO. | DATE | Revision Record | REV. |
 |---:|:---:|---|:---:|
 | 1 | 2026.07.22 | 폴링 방식 버튼 제어, 3초 정지 로직 구현 | REV. 1.0 |
 | 2 | 2026.07.24 | EXTI/TIM2/TIM4/USART2 인터럽트 기반으로 전면 개편<br>UART 속도 제어(PWM Duty) | REV. 1.1 |
+<br>
+<br>
 
 ---
 
 <a name="event&action"></a>
 
 ## 3. Event & Action
+<br>
 
 인터럽트에서는 입력 상태와 이벤트를 전역 플래그(Flag)에 저장하고,
 Main Loop에서 해당 플래그를 확인하여 모터 상태와 PWM Duty를 변경한다.
 
+<br>
+
 ### 3.1 이벤트 처리표
+<br>
 
 | Event | 발생 조건 | Action |
 |---|---|---|
@@ -65,8 +82,10 @@ Main Loop에서 해당 플래그를 확인하여 모터 상태와 PWM Duty를 �
 | `TIM2_Expired` | 버튼을 3초 이상 누른 상태로 TIM2 Timeout 발생 | `Motor_Stop()` 호출, `motor_state = STOP` |
 | `TIM4_Expired` | 방향 전환 시 Short Stop 후 TIM4 Timeout 발생 | `Toggle_with_Short_Stop()` 호출, 예약된 다음 방향으로 회전 |
 | `Uart_Data_In` | USART2로 숫자 데이터 수신 | `TIM5_PWM_Generation(curr_motor_speed)` 호출, PWM Duty 갱신 |
+<br>
 
 ### 3.2 버튼 Short Press 동작 (`Toggle_Motor_State`)
+<br>
 
 | 현재 상태 | 동작 | 다음 상태 |
 |---|---|---|
@@ -74,8 +93,10 @@ Main Loop에서 해당 플래그를 확인하여 모터 상태와 PWM Duty를 �
 | `CW` | 짧은 정지 후 역회전 예약 (`Motor_Short_Stop`, `next_state = CCW`) | `SHORT_STOP` |
 | `CCW` | 짧은 정지 후 정회전 예약 (`Motor_Short_Stop`, `next_state = CW`) | `SHORT_STOP` |
 | 그 외 | 모터 정지 (`Motor_Stop`) | `STOP` |
+<br>
 
 ### 3.3 Long Press 동작
+<br>
 
 버튼을 3초 이상 누르면 현재 모터 상태와 관계없이 모터를 정지한다.
 
@@ -88,6 +109,7 @@ TIM2 Timeout → TIM2_Expired = 1
     ↓
 Motor_Stop(), motor_state = STOP
 ```
+<br>
 
 ### 3.4 방향 전환 시 Short Stop 동작
 
@@ -102,12 +124,17 @@ TIM4 Timeout(200ms) → TIM4_Expired = 1
     ↓
 Toggle_with_Short_Stop() → 예약된 방향으로 회전
 ```
+<br>
 
 ### 3.5 UART 입력 동작
+<br>
 
 USART2로 숫자 문자 `'1'`부터 `'9'`까지 수신하면, `speed_table`에서 해당 인덱스의 속도를 읽어 `curr_motor_speed`를 갱신하고 PWM Duty를 재생성한다.
 
+<br>
+
 ### 3.6 이벤트 처리 순서
+<br>
 
 Main Loop에서는 다음 순서로 이벤트를 처리한다.
 
@@ -117,6 +144,8 @@ KEY_PRESSED → KEY_RELEASED → TIM2_Expired → TIM4_Expired → Uart_Data_In
 
 TIM2 Timeout(Long Press 정지)을 버튼 해제 판단과 별도로 처리하여
 Long Press와 Short Press 로직이 중복 실행되지 않도록 한다.
+<br>
+<br>
 
 ---
 
@@ -125,6 +154,7 @@ Long Press와 Short Press 로직이 중복 실행되지 않도록 한다.
 ## 4. Type Definition
 
 ### 4.1 `MOTOR_STATE`
+<br>
 
 모터의 현재 동작 상태를 나타내는 열거형입니다.
 
@@ -137,6 +167,7 @@ typedef enum t_MOTOR_STATE
     SHORT_STOP = 3U
 } MOTOR_STATE;
 ```
+<br>
 
 | 상태 | 값 | 설명 |
 |---|---:|---|
@@ -144,10 +175,12 @@ typedef enum t_MOTOR_STATE
 | `CW` | 1 | 모터 정회전(시계 방향) |
 | `CCW` | 2 | 모터 역회전(반시계 방향) |
 | `SHORT_STOP` | 3 | 방향 전환 전 짧은 정지 상태 |
+<br>
 
 ### 4.2 `KEY_STATE`
 
 버튼 인터럽트 이벤트를 나타내는 열거형입니다.
+<br>
 
 ```c
 typedef enum t_KEY_STATE
@@ -157,6 +190,7 @@ typedef enum t_KEY_STATE
     IS_RELEASED = 2U    // Rising
 } KEY_STATE;
 ```
+<br>
 
 | 상태 | 값 | 설명 |
 |---|---:|---|
@@ -167,6 +201,7 @@ typedef enum t_KEY_STATE
 ### 4.3 `MOTOR_SPEED`
 
 UART로 설정 가능한 모터 속도(PWM Duty %)를 나타내는 열거형입니다.
+<br>
 
 ```c
 typedef enum t_MOTOR_SPEED
@@ -183,11 +218,14 @@ typedef enum t_MOTOR_SPEED
 | `SPD_3` | 60 | `SPD_8` | 85 |
 | `SPD_4` | 65 | `SPD_9` | 90 |
 | `SPD_5` | 70 | `SPD_DEFAULT` | 100 (기본값) |
+<br>
+<br>
 
 ---
 <a name="variable"></a>
 
 ## 5. Variables
+<br>
 
 | 변수명 | 자료형 | 설명 |
 |---|---|---|
@@ -199,11 +237,14 @@ typedef enum t_MOTOR_SPEED
 | `next_state` | `volatile MOTOR_STATE` | Short Stop 이후 전환할 다음 회전 방향 |
 | `motor_state` | `MOTOR_STATE` | 현재 모터 상태(Main 지역 변수), `STOP`으로 초기화 |
 | `is_timer_started` | `int` | TIM2(3초 타이머) 동작 여부(Main 지역 변수) |
+<br>
+<br>
 
 ---
 <a name="function"></a>
 
 ## 6. Function Definition
+<br>
 
 | NO. | 함수명 | 반환형 | 매개변수 | 기능 |
 |---:|---|---|---|---|
@@ -223,6 +264,8 @@ typedef enum t_MOTOR_SPEED
 | 14 | `Motor_CW` | `void` | `void` | 모터 정회전(GPIO Alternate/Output 모드 전환) |
 | 15 | `Motor_CCW` | `void` | `void` | 모터 역회전(GPIO Alternate/Output 모드 전환) |
 | 16 | `GPIO_Mode_CW` / `GPIO_Mode_CCW` / `GIPO_Mode_Stop` | `void` | `void` | 회전 방향에 따른 PA0/PA1 핀 모드(PWM/Output) 설정 |
+<br>
+<br>
 
 ---
 
@@ -232,6 +275,8 @@ typedef enum t_MOTOR_SPEED
 
 ### 7.1 Motor Control FSM State Definition
 
+<br>
+
 | State | 설명 |
 |---|---|
 | `STOP` | 모터 대기 및 정지 상태 |
@@ -239,7 +284,11 @@ typedef enum t_MOTOR_SPEED
 | `CCW` | 모터 역회전(반시계 방향) |
 | `SHORT_STOP` | 방향 전환 시 모터 부하를 줄이기 위한 짧은 정지(200ms) 상태 |
 
+<br>
+
 ### 7.2 Motor Control FSM State Transition
+
+<br>
 
 | State Transition | 설명 |
 |---|---|
@@ -247,7 +296,11 @@ typedef enum t_MOTOR_SPEED
 | Button Long Press (3sec) | 버튼을 3초 이상 눌렀을 때 TIM2 Timeout으로 모터 정지 |
 | TIM4 Timeout | `SHORT_STOP` 이후 200ms 경과 시 예약된 방향으로 회전 재개 |
 
+<br>
+
 ### 7.3 State Transition
+
+<br>
 
 | 현재 상태 | 이벤트 | 중간 동작 | 다음 상태 |
 |---|---|---|---|
@@ -258,6 +311,8 @@ typedef enum t_MOTOR_SPEED
 | `CW` / `CCW` | TIM2 Timeout(3초 이상 누름) | `Motor_Stop()` | `STOP` |
 | `STOP` | TIM2 Timeout | 정지 유지 | `STOP` |
 
+<br>
+
 ---
 
 <a name="Flowchart"></a>
@@ -265,6 +320,7 @@ typedef enum t_MOTOR_SPEED
 ## 8. Flow Chart
 
 ### 8.1 Flow Chart Detail
+<br>
 
 <details>
 <summary><strong>전체 Flowchart 단계 보기</strong></summary>

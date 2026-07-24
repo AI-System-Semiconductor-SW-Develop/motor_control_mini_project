@@ -187,7 +187,7 @@ typedef enum t_MOTOR_SPEED
 ---
 <a name="variable"></a>
 
-## 5. Flag Variable
+## 5. Variables
 
 | 변수명 | 자료형 | 설명 |
 |---|---|---|
@@ -195,7 +195,7 @@ typedef enum t_MOTOR_SPEED
 | `TIM2_Expired` | `volatile int` | TIM2(3초 Long Press) Timeout 발생 여부 |
 | `TIM4_Expired` | `volatile int` | TIM4(Short Stop) Timeout 발생 여부 |
 | `Uart_Data_In` | `volatile int` | USART2 데이터 수신 여부 |
-| `curr_motor_speed` | `volatile MOTOR_SPEED` | 현재 설정된 모터 속도(PWM Duty), 기본값 `SPD_5` |
+| `curr_motor_speed` | `volatile MOTOR_SPEED` | 현재 설정된 모터 속도(PWM Duty), 기본값 `SPD_DEFAULT` |
 | `next_state` | `volatile MOTOR_STATE` | Short Stop 이후 전환할 다음 회전 방향 |
 | `motor_state` | `MOTOR_STATE` | 현재 모터 상태(Main 지역 변수), `STOP`으로 초기화 |
 | `is_timer_started` | `int` | TIM2(3초 타이머) 동작 여부(Main 지역 변수) |

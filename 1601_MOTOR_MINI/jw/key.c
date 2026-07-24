@@ -31,17 +31,17 @@ void Key_ISR_Enable(int en)
 		Macro_Set_Bit(RCC->APB2ENR, 14); 				//SYSCFG CLK ON: EXTI사용을 위해 SET 필수
 		Macro_Write_Block(SYSCFG->EXTICR[3], 0xf, 0x2, 4);	//PC13을 EXTI 13의 SCR로 설정
 
-		Macro_Set_Bit(EXTI->FTSR, PC13);		//Falling Edge 트리거 활성화
-		Macro_Set_Bit(EXTI->RTSR, PC13);		//Rising Edge 트리거 활성화
-		EXTI->PR = 0x1 << PC13;				//Pending Clear(쓰레기값 방지 초기화)
+		Macro_Set_Bit(EXTI->FTSR, PORTC_BTN_PIN);		//Falling Edge 트리거 활성화
+		Macro_Set_Bit(EXTI->RTSR, PORTC_BTN_PIN);		//Rising Edge 트리거 활성화
+		EXTI->PR = 0x1 << PORTC_BTN_PIN;				//Pending Clear(쓰레기값 방지 초기화)
 		
-		NVIC_ClearPendingIRQ(EXTI15_10);	//내부 INT Pending Clear
-		Macro_Set_Bit(EXTI->IMR, PC13);			//EXTI 활성화
-		NVIC_EnableIRQ(EXTI15_10);			//내부 INT 활성화
+		NVIC_ClearPendingIRQ(EXTI15_10_IRQn);	//내부 INT Pending Clear
+		Macro_Set_Bit(EXTI->IMR, PORTC_BTN_PIN);			//EXTI 활성화
+		NVIC_EnableIRQ(EXTI15_10_IRQn);			//내부 INT 활성화
 	}
 
 	else
 	{
-		NVIC_DisableIRQ(EXTI15_10);
+		NVIC_DisableIRQ(EXTI15_10_IRQn);
 	}
 }

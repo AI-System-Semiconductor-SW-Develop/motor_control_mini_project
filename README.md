@@ -207,7 +207,7 @@ typedef enum t_MOTOR_SPEED
 
 | NO. | 함수명 | 반환형 | 매개변수 | 기능 |
 |---:|---|---|---|---|
-| 1 | `Sys_Init` | `void` | `int baud` | Clock, UART1/2, LED 초기화 |
+| 1 | `Sys_Init` | `void` | `int baud` | Clock, UART1/2 초기화|
 | 2 | `GPIO_Init` | `void` | `void` | 모터 제어용 PA0, PA1 및 버튼용 PC13 초기화 |
 | 3 | `Key_ISR_Enable` | `void` | `int en` | EXTI13(PC13) 버튼 인터럽트 활성화/비활성화 |
 | 4 | `Uart2_RX_Interrupt_Enable` | `void` | `void` | USART2 수신 인터럽트 활성화 |

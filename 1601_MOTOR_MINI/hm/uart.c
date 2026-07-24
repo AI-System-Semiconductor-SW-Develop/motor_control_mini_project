@@ -35,20 +35,6 @@ void Uart2_Init(int baud)
   USART2->CR3 = 0;
 }
 
-char Uart2_Get_Pressed(void)
-{
-
-	if(Macro_Check_Bit_Set(USART2->SR, 5))
-	{
-		return (char)USART2->DR;
-	}
-
-	else
-	{
-		return (char)0;
-	}
-}
-
 void Uart2_Send_Byte(char data)
 {
   if(data == '\n')
@@ -59,6 +45,21 @@ void Uart2_Send_Byte(char data)
 
   while(!Macro_Check_Bit_Set(USART2->SR, 7));
   USART2->DR = data;
+}
+
+void Uart2_RX_Interrupt_Enable(int en)
+{
+  if(en)
+  {
+    Macro_Set_Bit(USART2->CR1, 5);
+    NVIC_ClearPendingIRQ(38);
+    NVIC_EnableIRQ(38);
+  }
+  else
+  {
+    Macro_Clear_Bit(USART2->CR1, 5);
+    NVIC_DisableIRQ(38);
+  }
 }
 
 void Uart1_Init(int baud)
@@ -140,4 +141,3 @@ char Uart1_Get_Char(void)
 	while(!Macro_Check_Bit_Set(USART1->SR, 5));
 	return (char)USART1->DR;
 }
-

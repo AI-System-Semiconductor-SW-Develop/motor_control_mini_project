@@ -7,6 +7,7 @@
 
 extern void Uart2_Init(int baud);
 extern void Uart2_Send_Byte(char data);
+extern void Uart2_RX_Interrupt_Enable(int en);
 
 extern void Uart1_Init(int baud);
 extern void Uart1_Send_Byte(char data);
@@ -14,7 +15,6 @@ extern void Uart1_Send_String(char *pt);
 extern void Uart1_Printf(char *fmt,...);
 extern char Uart1_Get_Char(void);
 extern char Uart1_Get_Pressed(void);
-extern char Uart2_Get_Pressed(void);
 
 // SysTick.c
 
@@ -40,6 +40,7 @@ extern void Key_Poll_Init(void);
 extern int Key_Get_Pressed(void);
 extern void Key_Wait_Key_Released(void);
 extern void Key_Wait_Key_Pressed(void);
+extern void Key_ISR_Enable(int en);
 
 // Timer.c
 
@@ -50,7 +51,13 @@ extern void TIM4_Repeat(int time);
 extern int TIM4_Check_Timeout(void);
 extern void TIM4_Stop(void);
 extern void TIM4_Change_Value(int time);
-extern void TIM5_Out_PWM_Generation(int duty,int a,int b);
+extern void TIM4_Repeat_Interrupt_Enable(int en, int time);
+extern void TIM3_Out_Init(void);
+extern void TIM3_Out_Freq_Generation(unsigned short freq);
+extern void TIM3_Out_Stop(void);
+
+extern void Motor_Control(int state);
+
 extern void TIM5_Out_Init(void);
 
-extern void PORTA_Mode(int a);
+extern void PORTA_Mode (int port);

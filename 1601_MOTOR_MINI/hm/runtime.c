@@ -33,14 +33,7 @@ int _write(int file, char *ptr, int len)
 }
 
 int _read(int file, char *ptr, int len) 
-{   char buff[len+1];
-
-	for (int i = 0; i < len; i++)
-	{
-		buff[i]= Uart1_Get_Char();
-	}
-	ptr = buff;
-	
+{ 
 	return 0; 
 }
 

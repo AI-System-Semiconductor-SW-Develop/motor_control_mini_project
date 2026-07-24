@@ -22,6 +22,12 @@
 
 ## 1. 프로젝트 개요
 
+버튼, 타이머, UART 인터럽트를 이용하여 DC 모터의 회전 방향과 속도를 제어한다.
+
+버튼 입력은 Short Press와 Long Press로 구분하며, 방향 전환 시에는 모터를 잠시 정지한 후 반대 방향으로 회전한다.
+
+UART2로 속도 명령을 수신하여 TIM5 PWM Duty를 변경한다.
+
 ### 주요 기능
 
 | 기능 | 설명 |
@@ -53,58 +59,77 @@
 
 ## 3. Event & Action
 
-인터럽트에서 입력 상태와 이벤트를 Flag에 저장하고,  
-Main Loop에서 해당 Flag를 확인하여 모터 상태와 PWM Duty를 변경한다.
-
 ### 3.1 이벤트 처리표
 
-| Event | 발생 조건 | Action |
-|---|---|---|
-| `UART_RX` | UART2 데이터 수신 | 숫자 문자에 따라 PWM Duty 변경 |
-| `KEY_PRESSED` | 버튼을 누름 | Long Press 측정을 위한 TIM4 시작 |
-| `TIM4_TIMEOUT` | 버튼을 누른 상태로 3초 경과 | 모터 정지 |
-| `KEY_RELEASED` | 버튼을 뗌 | TIM4 정지 후 Short Press 동작 수행 |
+| Event | 발생 조건 | Interrupt Action | Main Action |
+|---|---|---|---|
+| `KEY_PRESSED` | 버튼을 누름 | `key_state`를 `IS_PRESSED`로 설정 | TIM2 3초 타이머 시작 |
+| `KEY_RELEASED` | 버튼을 뗌 | `key_state`를 `IS_RELEASED`로 설정 | TIM2 정지 후 Short Press 처리 |
+| `TIM2_TIMEOUT` | 버튼을 누른 상태로 3초 경과 | `TIM2_Expired` 설정 | 모터 정지 |
+| `TIM4_TIMEOUT` | 방향 전환을 위한 Short Stop 시간 경과 | `TIM4_Expired` 설정 | `next_state` 방향으로 모터 전환 |
+| `UART_RX` | UART2 데이터 수신 | 수신 문자에 따라 `curr_motor_speed` 저장 | TIM5 PWM Duty 갱신 |
+
+---
 
 ### 3.2 Short Press 동작
 
-| 현재 상태 | 동작 | 다음 상태 |
+버튼을 누른 후 TIM2 Timeout이 발생하기 전에 버튼을 떼면 Short Press로 처리한다.
+
+| 현재 상태 | Action | 다음 상태 |
 |---|---|---|
-| `STOP` | 시계 방향 회전 | `TURN_COUNTER_CLOCKWISE` |
-| `TURN_CLOCKWISE` | 20ms 정지 후 반시계 방향 회전 | `TURN_COUNTER_CLOCKWISE` |
-| `TURN_COUNTER_CLOCKWISE` | 20ms 정지 후 시계 방향 회전 | `TURN_CLOCKWISE` |
+| `STOP` | 모터 회전 시작 | 첫 번째 회전 방향 |
+| `CW` | Short Stop 후 반시계 방향 회전 | `CCW` |
+| `CCW` | Short Stop 후 시계 방향 회전 | `CW` |
+
+방향을 전환할 때 즉시 반대 방향으로 회전하지 않고 TIM4를 이용한 Short Stop을 수행한다.
+
+---
 
 ### 3.3 Long Press 동작
 
-버튼을 3초 이상 누르면 현재 모터 상태와 관계없이 모터를 정지한다.
+버튼을 누르면 TIM2 3초 타이머를 시작한다.
+
+버튼을 누른 상태로 3초가 지나면 TIM2 인터럽트가 발생하고 현재 모터 상태와 관계없이 모터를 정지한다.
 
 ```text
 버튼 누름
     ↓
-TIM4 3초 시작
+TIM2 3초 타이머 시작
     ↓
-TIM4 Timeout
+3초 동안 버튼 유지
     ↓
-Motor_STOP
+TIM2 Timeout
+    ↓
+Motor Stop
 ```
 
-Long Press 처리 후 버튼을 떼더라도 Short Press 동작은 수행하지 않는다.
-
-### 3.4 UART 입력 동작
-
-UART2로 숫자 문자 `'0'`부터 `'9'`까지 수신하여 PWM Duty를 변경한다.
-
-### 3.5 이벤트 처리 순서
-
-Main Loop에서는 다음 순서로 이벤트를 처리한다.
-
-```text
-UART_RX → KEY_PRESSED → TIM4_TIMEOUT → KEY_RELEASED
-```
-
-TIM4 Timeout을 버튼 해제보다 먼저 처리하여  
-Long Press와 Short Press가 중복 처리되지 않도록 한다.
+TIM2 Timeout 이후 버튼을 떼더라도 Short Press 동작은 수행하지 않는다.
 
 ---
+
+### 3.4 UART 속도 제어
+
+UART2로 문자 `'1'`부터 `'9'`까지 수신하여 모터 속도를 변경한다.
+
+| UART 입력 | 설정 속도 |
+|:---:|:---:|
+| `'1'` | `SPD_1` |
+| `'2'` | `SPD_2` |
+| `'3'` | `SPD_3` |
+| `'4'` | `SPD_4` |
+| `'5'` | `SPD_5` |
+| `'6'` | `SPD_6` |
+| `'7'` | `SPD_7` |
+| `'8'` | `SPD_8` |
+| `'9'` | `SPD_9` |
+
+수신 문자를 이용하여 `speed_table`에서 모터 속도 값을 선택한다.
+
+```text
+Speed Index = 수신 문자 - '0' - 1
+```
+
+유효하지 않은 문자를 수신하면 현재 속도를 유지한다.
 
 <a name="datatype"></a>
 

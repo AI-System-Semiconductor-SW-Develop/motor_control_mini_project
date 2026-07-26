@@ -29,7 +29,7 @@ void GPIO_Mode_CCW(void){
     Macro_Write_Block(GPIOA->PUPDR, 0x3, 0x1, 2);       // PA1 Pull-up
 }
 
-void GIPO_Mode_Stop(void){
+void GPIO_Mode_Stop(void){
     Macro_Write_Block(GPIOA->MODER,0xf, 0x5, 0);	//PA0, PA1 General output
     Macro_Write_Block(GPIOA->OTYPER, 0x3, 0x0, 0);	//PA0, PA1 Push-pull
 }

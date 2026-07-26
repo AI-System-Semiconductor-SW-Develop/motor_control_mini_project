@@ -95,7 +95,7 @@ Main Loop에서 해당 플래그를 확인하여 모터 상태와 PWM Duty를 �
 | `STOP` | 정회전 시작 (`Motor_CW`) | `CW` |
 | `CW` | 짧은 정지 후 역회전 예약 (`Motor_Short_Stop`, `next_state = CCW`) | `SHORT_STOP` |
 | `CCW` | 짧은 정지 후 정회전 예약 (`Motor_Short_Stop`, `next_state = CW`) | `SHORT_STOP` |
-| `SHORT_STOP` | 재입력 무시,  | `SHORT_STOP` |
+| `SHORT_STOP` | 재입력 무시 | `SHORT_STOP` |
 | 그 외 | 모터 정지 (`Motor_Stop`) | `STOP` |
 <br>
 

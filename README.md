@@ -45,7 +45,10 @@ GitHub 주소: `https://github.com/AI-System-Semiconductor-SW-Develop/motor_cont
 ### 1-3. 참여 인원
 <br>
 
-**혜민** **서희** **재우**
+| <img src="https://github.com/hyehye12.png" width="100"> | <img src="https://github.com/yckb1297.png" width="100"> | <img src="https://github.com/Kevin-jwd.png" width="100"> |
+|:---:|:---:|:---:|
+| **혜민** | **서희** | **재우** |
+| [@hyehye12](https://github.com/hyehye12) | [@yckb1297](https://github.com/yckb1297) | [@Kevin-jwd](https://github.com/Kevin-jwd) |
 <br>
 <br>
 

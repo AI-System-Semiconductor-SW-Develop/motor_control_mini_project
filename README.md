@@ -26,7 +26,7 @@ GitHub 주소: `https://github.com/AI-System-Semiconductor-SW-Develop/motor_cont
 
 ### 1-1. FSM
 
-<img width="1109" height="579" alt="image" src="https://github.com/user-attachments/assets/2122271e-6ee1-4e71-ae60-7b71b5ba0ad4" />
+<img width="1073" height="592" alt="image" src="https://github.com/user-attachments/assets/3856fca7-bac3-4c27-804e-b32005708ffc" />
 <br>
 
 ### 1-2. 주요 기능

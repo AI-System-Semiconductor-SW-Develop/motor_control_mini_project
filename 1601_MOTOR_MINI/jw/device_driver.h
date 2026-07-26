@@ -3,8 +3,6 @@
 #include "macro.h"
 #include "malloc.h"
 
-#define PC13			13U
-
 typedef enum t_MOTOR_STATE
 {
 	STOP = 0U,

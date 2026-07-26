@@ -3,8 +3,10 @@
 
 extern volatile MOTOR_STATE next_state;
 
-void Toggle_Motor_State(MOTOR_STATE *state) {
-    switch (*state) {
+void Toggle_Motor_State(MOTOR_STATE *state) 
+{
+    switch (*state) 
+    {
         case STOP:  // 정지 -> 정회전
             Motor_CW();
             *state = CW;
@@ -25,7 +27,7 @@ void Toggle_Motor_State(MOTOR_STATE *state) {
         case SHORT_STOP:  
             Motor_Stop();
             break;
-            
+
         default:    // 예외 처리
             Motor_Stop();
             *state = STOP;
@@ -33,8 +35,10 @@ void Toggle_Motor_State(MOTOR_STATE *state) {
     }
 }
 
-void Toggle_with_Short_Stop(MOTOR_STATE *state, MOTOR_STATE next_state){
-    switch(next_state){
+void Toggle_with_Short_Stop(MOTOR_STATE *state, MOTOR_STATE next_state)
+{
+    switch(next_state)
+    {
         case CW:    // 정회전 -> 역회전
             Motor_CW();
             *state = CW;
@@ -50,27 +54,31 @@ void Toggle_with_Short_Stop(MOTOR_STATE *state, MOTOR_STATE next_state){
     }
 }
 
-void Motor_Stop(){
+void Motor_Stop()
+{
     GPIO_Mode_Stop();
     TIM5_PWM_Disable();
-    Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
+    Macro_Write_Block(GPIOA->ODR, TWO_BIT, 0x0, 0);
 }
 
-void Motor_Short_Stop(){
+void Motor_Short_Stop()
+{
     GPIO_Mode_Stop();
     TIM5_PWM_Disable();
-    Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-    TIM4_Timer_Start(300);
+    Macro_Write_Block(GPIOA->ODR, TWO_BIT, 0x0, 0);
+    TIM4_Timer_Start(SHORT_STOP_MSEC);
 }
 
-void Motor_CW(void){
+void Motor_CW(void)
+{
     GPIO_Mode_CW();
     TIM5_PWM_Enable();
-    Macro_Set_Bit(GPIOA->ODR, 1);       //PA1 OFF
+    Macro_Set_Bit(GPIOA->ODR, 1);       // PA1 OFF
 }
 
-void Motor_CCW(void){
+void Motor_CCW(void)
+{
     GPIO_Mode_CCW();
     TIM5_PWM_Enable();
-    Macro_Set_Bit(GPIOA->ODR, 0);       //PA0 OFF
+    Macro_Set_Bit(GPIOA->ODR, 0);       // PA0 OFF
 }

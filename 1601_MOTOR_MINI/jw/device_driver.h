@@ -5,29 +5,30 @@
 
 typedef enum t_MOTOR_STATE
 {
-	STOP = 0U,
-	CW = 1U,
-	CCW = 2U,
+	STOP       = 0U,
+	CW         = 1U,
+	CCW        = 2U,
 	SHORT_STOP = 3u
 } MOTOR_STATE;
 
 typedef enum t_KEY_STATE
 {
-	KEY_IDLE = 0U,		// IDLE
-	IS_PRESSED = 1U,	// Falling
+	KEY_IDLE    = 0U,   // IDLE
+	IS_PRESSED  = 1U,	// Falling
 	IS_RELEASED = 2U	// Rising
 } KEY_STATE;
 
-typedef enum t_MOTOR_SPEED{
-    SPD_1 = 50,
-    SPD_2 = 55,
-    SPD_3 = 60,
-    SPD_4 = 65,
-    SPD_5 = 70,
-    SPD_6 = 75,
-    SPD_7 = 80,
-    SPD_8 = 85,
-    SPD_9 = 90,
+typedef enum t_MOTOR_SPEED
+{
+    SPD_1       = 50,
+    SPD_2       = 55,
+    SPD_3       = 60,
+    SPD_4       = 65,
+    SPD_5       = 70,
+    SPD_6       = 75,
+    SPD_7       = 80,
+    SPD_8       = 85,
+    SPD_9       = 90,
     SPD_DEFAULT = 100
 } MOTOR_SPEED;
 
@@ -40,7 +41,6 @@ extern void GPIO_Mode_CCW(void);
 extern void GPIO_Mode_Stop(void);
 
 // Uart.c
-
 extern void Uart2_Init(int baud);
 extern void Uart2_RX_Interrupt_Enable(void);
 extern void Uart2_Send_Byte(char data);
@@ -54,7 +54,6 @@ extern void Key_ISR_Enable(void);
 
 // Timer.c
 extern void TIM2_Timer_Start(int msec);
-extern int TIM2_Check_Timeout(void);
 extern void TIM2_Stop(void);
 
 extern void TIM4_Timer_Start(int time);

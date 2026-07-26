@@ -46,13 +46,11 @@
 /* Timer */
 #define TIM2_TICK	 (20U)	               //usec
 #define TIM2_FREQ	 (1000000./TIM2_TICK)  // Hz	
-#define TIM2_1ms_Pls (1000./TIM4_TICK)
-#define TIM2_MAX	 (0xffffffffU)         // 32bit
+#define TIM2_1ms_Pls (1000./TIM2_TICK)
 
 #define TIM4_TICK	 (20U) 				   // usec
 #define TIM4_FREQ 	 (1000000./TIM4_TICK)  // Hz
-#define TIM4_1ms_Pls (1000/TIM4_TICK) 
-#define TIM4_MAX	 (0xffffU)             // 16bit
+#define TIM4_1ms_Pls (1000./TIM4_TICK) 
 
 #define TIM5_FREQ			(1000000.)
 #define TIM5_TICK			(1000000./TIM5_FREQ)	// 100usec

@@ -85,6 +85,8 @@ void TIM5_PWM_Generation(int duty)
 {
 	TIM5->CCR1 = TIM5->ARR * duty / 100;	// PA0 duty
 	TIM5->CCR2 = TIM5->ARR * duty / 100;	// PA1 duty
+
+	Macro_Set_Bit(TIM5->EGR, UG_BIT);
 }
 
 void TIM5_PWM_Enable(void)

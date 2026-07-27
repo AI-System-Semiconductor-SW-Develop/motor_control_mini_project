@@ -1,5 +1,6 @@
 #include "device_driver.h"
 
+#if 0
 void SysTick_Run(unsigned int msec)
 {
 	SysTick->CTRL = (0<<2)+(0<<1)+(0<<0);
@@ -27,3 +28,4 @@ void SysTick_Stop(void)
 {
 	SysTick->CTRL = 0<<0;
 }
+#endif

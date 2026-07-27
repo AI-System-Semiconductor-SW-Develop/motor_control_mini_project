@@ -22,21 +22,3 @@ void Key_ISR_Enable()
 	NVIC_EnableIRQ(EXTI15_10_IRQn);			//내부 INT 활성화
 
 }
-
-#if 0
-void Key_Poll_Init(void)
-{
-	Macro_Set_Bit(RCC->AHB1ENR, 2); 
-	Macro_Write_Block(GPIOC->MODER, 0x3, 0x0, 26);
-}
-
-void Key_Wait_Key_Pressed(void)
-{
-	while(!Macro_Check_Bit_Clear(GPIOC->IDR, 13));
-}
-
-void Key_Wait_Key_Released(void)
-{
-	while(!Macro_Check_Bit_Set(GPIOC->IDR, 13));
-}
-#endif

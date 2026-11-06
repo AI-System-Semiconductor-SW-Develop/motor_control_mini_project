@@ -9,6 +9,10 @@
 #define TIM2_INT_POS	(IRQn_Type)28U
 #define TIM4_INT_POS	(IRQn_Type)30U
 
+#define LONG_PRESS_MS	(3000U)		// 길게 누름 판정 시간
+#define SHORT_STOP_MS	(300U)		// 방향 전환 전 정지 시간
+#define SPEED_TABLE_SIZE	(9U)
+
 typedef enum t_MOTOR_STATE
 {
 	STOP = 0U,
@@ -36,14 +40,14 @@ typedef enum t_MOTOR_SPEED{
     SPD_9 = 90
 } MOTOR_SPEED;
 
-extern const MOTOR_SPEED speed_table[10];
+extern const MOTOR_SPEED speed_table[SPEED_TABLE_SIZE];
 
 //gpio.c
 
 extern void GPIO_Init(void);
 extern void GPIO_Mode_CW(void);
 extern void GPIO_Mode_CCW(void);
-extern void GIPO_Mode_Stop(void);
+extern void GPIO_Mode_Stop(void);
 
 // Uart.c
 
@@ -83,6 +87,8 @@ extern int Key_Get_Pressed(void);
 extern void Key_Wait_Key_Released(void);
 extern void Key_Wait_Key_Pressed(void);
 extern void Key_ISR_Enable(int en);
+extern void Key_Event_Push(KEY_STATE ev);
+extern KEY_STATE Key_Event_Pop(void);
 
 // Timer.c
 extern void TIM2_3sec_Timer_Start(void);
@@ -90,10 +96,11 @@ extern int TIM2_Check_Timeout(void);
 extern void TIM2_Stop(void);
 
 extern void TIM4_Delay(int time);
-extern void TIM4_Delay_Interrupt_Enable(int time);
+extern void TIM4_Delay_Interrupt_Enable(unsigned int msec);
+extern void TIM4_Stop(void);
 
-extern void TIM5_Out_Init(void);
-extern void TIM5_PWM_Generation(int duty);
+extern void TIM5_PWM_Init(int duty);
+extern void TIM5_Set_Duty(int duty);
 #if 0
 extern void TIM2_Stopwatch_Start(void);
 extern unsigned int TIM2_Stopwatch_Stop(void);
@@ -107,7 +114,7 @@ extern void TIM4_Change_Value(int time);
 // Motor.c
 
 extern void Toggle_Motor_State(MOTOR_STATE *state);
-extern void Toggle_with_Short_Stop(MOTOR_STATE *state, MOTOR_STATE next_state);
+extern void Toggle_with_Short_Stop(MOTOR_STATE *state, MOTOR_STATE target);
 extern void Motor_Stop(void);
 extern void Motor_Short_Stop(void);
 extern void Motor_CW(void);

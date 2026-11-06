@@ -41,8 +41,8 @@ void Uart2_RX_Interrupt_Enable(void)
     (void)USART2->DR;                //clear하고 싶으면 clear
 
     Macro_Set_Bit(USART2->CR1, 5);          // USART2 RX Interrupt Enable
-    NVIC_ClearPendingIRQ((IRQn_Type)38);    // NIVC Pending Clear
-    NVIC_EnableIRQ((IRQn_Type)38);          // NVIC Interrupt Enable
+    NVIC_ClearPendingIRQ(USART2_IRQn);      // NVIC Pending Clear
+    NVIC_EnableIRQ(USART2_IRQn);            // NVIC Interrupt Enable
 }
 
 void Uart2_Send_Byte(char data)

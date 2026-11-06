@@ -1,114 +1,138 @@
 #include "device_driver.h"
 #include <stdio.h>
 
-#define TIM2_TICK	20	//usec
-#define TIM2_FREQ	(1000000./TIM2_TICK)	//Hz로 단위 통일하기 위해 1000000.을 곱해줌. 계산할 때 오버플로우 방지를 위해 괄호 쓰기.
-#define TIM2_1ms_Pls	(TIM2_FREQ/1000.)
-#define TIM2_MAX		(0xffffffff)
+#define TIM2_TICK		20U								// usec
+#define TIM2_FREQ		(1000000U / TIM2_TICK)			// 50kHz
+#define TIM2_1ms_Pls	(1000U / TIM2_TICK)				// 50 counts = 1ms
+#define TIM2_MAX		(0xffffffffU)
 
-#define TIM4_TICK	  		(20) 				// usec
-#define TIM4_FREQ 	  		(1000000/TIM4_TICK) // Hz
-#define TIME4_PLS_OF_1ms  	(1000/TIM4_TICK)
-#define TIM4_MAX	  		(0xffffu)
+#define TIM4_TICK		20U								// usec
+#define TIM4_FREQ		(1000000U / TIM4_TICK)			// 50kHz
+#define TIME4_PLS_OF_1ms (1000U / TIM4_TICK)			// 50 counts = 1ms
+#define TIM4_MAX		(0xffffU)
 
+extern volatile int TIM2_Expired;
+extern volatile int TIM4_Expired;
 
-/* TIMER 2: 3초 타이머용 */
+/* ========== TIMER 2: 3초 길게 누름 판정 (one-pulse, down count) ========== */
 
-void TIM2_3sec_Timer_Start(void){
+void TIM2_3sec_Timer_Start(void)
+{
+	Macro_Set_Bit(RCC->APB1ENR, 0);					// TIM2 clock enable
 
-	Macro_Set_Bit(RCC->APB1ENR, 0);		//TMR2 en set
+	Macro_Clear_Bit(TIM2->CR1, 0);					// 재시작 전 정지
+	// URS(bit2)=1: over/underflow 때만 UIF set, OPM(bit3)=1, DIR(bit4)=1(down)
+	Macro_Write_Block(TIM2->CR1, 0x7, 0x7, 2);
+	TIM2->PSC = (unsigned int)(TIMXCLK / (double)TIM2_FREQ + 0.5) - 1;	// 50kHz
+	// down count는 ARR → 0까지 (ARR+1)카운트이므로 -1
+	TIM2->ARR = LONG_PRESS_MS * TIM2_1ms_Pls - 1;
 
-	//URS(Bit2) 설정, over/underflow발생시에만 UIF set
-	Macro_Write_Block(TIM2->CR1, 0x7, 0x7, 2);		//down count, one pulse, URS
-	TIM2->PSC = (int)(TIMXCLK/TIM2_FREQ +0.5) - 1;	//분주비 1920, 50kHz
-	TIM2->ARR = 150000;
+	Macro_Set_Bit(TIM2->EGR, 0);					// PSC/ARR 반영 (URS=1이라 UIF 안 생김)
 
-	Macro_Set_Bit(TIM2->EGR, 0);	//Update event Generation
+	Macro_Clear_Bit(TIM2->SR, 0);					// TIM2 UIF clear
+	NVIC_ClearPendingIRQ(TIM2_IRQn);
+	TIM2_Expired = 0;								// 이전 만료 플래그 제거
 
-	Macro_Clear_Bit(TIM2->SR, 0);			// TIM4 Pending Clear
-	NVIC_ClearPendingIRQ(TIM2_INT_POS);		// NVIC Pending Clear
+	Macro_Set_Bit(TIM2->DIER, 0);					// TIM2 Update interrupt enable
+	NVIC_EnableIRQ(TIM2_IRQn);
 
-	Macro_Set_Bit(TIM2->DIER, 0);		// TIM4 Interrupt Enable
-	NVIC_EnableIRQ(TIM2_INT_POS);		// NVIC Interrupt Enable
-
-	Macro_Set_Bit(TIM2->CR1, 0);	//TIM2 Start
+	Macro_Set_Bit(TIM2->CR1, 0);					// TIM2 start
 }
 
-
-int TIM2_Check_Timeout(void){
-
-	if(Macro_Check_Bit_Set(TIM2->SR, 0)){
-		printf("Timeout !!!\n");
-		Macro_Clear_Bit(TIM2->SR, 0);	//flag clear
+int TIM2_Check_Timeout(void)
+{
+	if (Macro_Check_Bit_Set(TIM2->SR, 0)) {
+		Macro_Clear_Bit(TIM2->SR, 0);
 		return 1;
 	}
-	else           
-		return 0;
+	return 0;
 }
 
+/*
+ * 타이머를 멈추고, 멈추기 직전에 ISR이 세운 만료 플래그까지 지운다.
+ * 플래그를 마지막에 지워야 "정지 직전 만료" 경쟁에서도 플래그가 남지 않는다.
+ */
 void TIM2_Stop(void)
 {
-	printf("timer stop\n");
-	Macro_Clear_Bit(TIM2->CR1, 0);
-
-	Macro_Clear_Bit(TIM2->DIER, 0);  // 인터럽트 비활성화
-    NVIC_DisableIRQ(28);             // NVIC 비활성화
-    
-    Macro_Clear_Bit(TIM2->SR, 0);    // UIF 펜딩 클리어
-    NVIC_ClearPendingIRQ(28);        // NVIC 펜딩 클리어
+	Macro_Clear_Bit(TIM2->CR1, 0);					// TIM2 stop
+	Macro_Clear_Bit(TIM2->DIER, 0);					// interrupt disable
+	Macro_Clear_Bit(TIM2->SR, 0);					// UIF clear
+	NVIC_ClearPendingIRQ(TIM2_IRQn);
+	TIM2_Expired = 0;
 }
 
-/* TIMER 4: 딜레이용 */
+/* ========== TIMER 4: 방향 전환 전 정지 대기 (one-pulse, down count) ========== */
 
-void TIM4_Delay_Interrupt_Enable(int time)
+void TIM4_Delay_Interrupt_Enable(unsigned int msec)
 {
-	// TIM4 Clock On
-	Macro_Set_Bit(RCC->APB1ENR, 2);
-	
-	Macro_Clear_Bit(TIM4->CR1, 0);	//TIM4 stop
-	Macro_Write_Block(TIM4->CR1, 0x7, 0x7, 2);		//down count, one pulse, URS
-	TIM4->PSC = (unsigned int)(TIMXCLK/(double)TIM4_FREQ + 0.5)-1;
-	TIM4->ARR = TIME4_PLS_OF_1ms * time;
+	Macro_Set_Bit(RCC->APB1ENR, 2);					// TIM4 clock enable
 
-	Macro_Set_Bit(TIM4->EGR,0);			//Update event
+	Macro_Clear_Bit(TIM4->CR1, 0);					// TIM4 stop
+	Macro_Write_Block(TIM4->CR1, 0x7, 0x7, 2);		// URS, one pulse, down count
+	TIM4->PSC = (unsigned int)(TIMXCLK / (double)TIM4_FREQ + 0.5) - 1;	// 50kHz
+	TIM4->ARR = TIME4_PLS_OF_1ms * msec - 1;		// 16비트: 최대 약 1310ms
 
-	Macro_Clear_Bit(TIM4->SR, 0);		// TIM4 Pending Clear
-	NVIC_ClearPendingIRQ(30);			// NVIC Pending Clear
+	Macro_Set_Bit(TIM4->EGR, 0);
 
-	Macro_Set_Bit(TIM4->DIER, 0);		// TIM4 Interrupt Enable
-	NVIC_EnableIRQ(30);					// NVIC Interrupt Enable
+	Macro_Clear_Bit(TIM4->SR, 0);
+	NVIC_ClearPendingIRQ(TIM4_IRQn);
+	TIM4_Expired = 0;
 
-	Macro_Set_Bit(TIM4->CR1, 0);		// TIM4 Start
+	Macro_Set_Bit(TIM4->DIER, 0);
+	NVIC_EnableIRQ(TIM4_IRQn);
+
+	Macro_Set_Bit(TIM4->CR1, 0);					// TIM4 start
 }
 
-/* TIMER 5: 모터 속도 제어용 PWM*/
-
-#define TIM5_FREQ			(1000000)
-#define FREQ_TARGET			(10000)
-#define TIM5_TICK			(1000000/TIM5_FREQ)		//100usec
-#define TIM5_PLS_OF_1ms		(1000/TIM5_TICK)		//10pls = 1msec
-
-void TIM5_Out_Init(void)
+/* 정지 명령이 들어오면 진행 중인 방향 전환 대기를 취소한다. */
+void TIM4_Stop(void)
 {
-	Macro_Set_Bit(RCC->AHB1ENR, 0);
-	Macro_Set_Bit(RCC->APB1ENR, 3);
-	
-	Macro_Write_Block(TIM5->CCMR1,0xffff, 0x7878, 0);	//PWM 2 mode로 설정 CNT>CCR(duty)일 때, LOW
-	TIM5->CCER = (0<<5)|(1<<4)|(0<<1)|(1<<0);	//TIM5 CH1, CH2 Capture&Compare Enable
+	Macro_Clear_Bit(TIM4->CR1, 0);
+	Macro_Clear_Bit(TIM4->DIER, 0);
+	Macro_Clear_Bit(TIM4->SR, 0);
+	NVIC_ClearPendingIRQ(TIM4_IRQn);
+	TIM4_Expired = 0;
 }
 
-void TIM5_PWM_Generation(int duty){
-	
-	Macro_Write_Block(TIM5->CR1, 0x3, 0x2, 3);
-	TIM5->PSC = TIMXCLK / TIM5_FREQ - 1;		//TIM5_FREQ를 만들 수 있게 분주
-	TIM5->ARR = (int)((double)TIM5_FREQ / FREQ_TARGET);		//목표주파수 10kHz
+/* ========== TIMER 5: 모터 속도 PWM (10kHz) ========== */
 
-	TIM5->CCR1 = TIM5->ARR * duty / 100;		//PA0 duty
-	TIM5->CCR2 = TIM5->ARR * duty / 100;		//PA1 duty
+#define TIM5_FREQ		(1000000U)						// 카운터 1MHz (1카운트 = 1usec)
+#define FREQ_TARGET		(10000U)						// PWM 10kHz
+#define TIM5_PERIOD		(TIM5_FREQ / FREQ_TARGET)		// 100카운트 = 100usec
 
-	Macro_Set_Bit(TIM5->EGR, 0);	//Manual Update
+/*
+ * 상향 카운트 + PWM mode 1, CCxP=0(Active High)
+ *   CNT < CCR 동안 High  →  핀 High 비율 = CCR / (ARR+1) = duty / 100
+ * OCxPE(프리로드)를 켜서 CCR 변경은 다음 주기 시작(update)부터 반영된다.
+ */
+void TIM5_PWM_Init(int duty)
+{
+	Macro_Set_Bit(RCC->AHB1ENR, 0);					// GPIOA clock enable
+	Macro_Set_Bit(RCC->APB1ENR, 3);					// TIM5 clock enable
 
-	Macro_Set_Bit(TIM5->CR1, 0);	//Timer Start
+	Macro_Clear_Bit(TIM5->CR1, 0);					// 설정 중 정지
+	Macro_Write_Block(TIM5->CR1, 0x3, 0x0, 3);		// OPM=0, DIR=0(up)
+	// CH1/CH2: OCxM=110(PWM mode 1), OCxPE=1  → 0x68씩
+	Macro_Write_Block(TIM5->CCMR1, 0xffff, 0x6868, 0);
+	TIM5->CCER = (0 << 5) | (1 << 4) | (0 << 1) | (1 << 0);	// CH1·CH2 출력, Active High
+
+	TIM5->PSC = (unsigned int)(TIMXCLK / (double)TIM5_FREQ + 0.5) - 1;	// 96MHz → 1MHz
+	TIM5->ARR = TIM5_PERIOD - 1;					// 0~99, 정확히 10kHz
+
+	TIM5->CCR1 = (unsigned int)duty;				// PA0
+	TIM5->CCR2 = (unsigned int)duty;				// PA1
+
+	Macro_Set_Bit(TIM5->EGR, 0);					// 초기값 반영 (최초 1회만)
+	Macro_Set_Bit(TIM5->CR1, 0);					// TIM5 start
+}
+
+/* 동작 중 듀티 변경: CCR만 갱신 (카운터 리셋 없음 → 파형 끊김 없음) */
+void TIM5_Set_Duty(int duty)
+{
+	if (duty < 0)   duty = 0;
+	if (duty > 100) duty = 100;
+	TIM5->CCR1 = (unsigned int)duty;
+	TIM5->CCR2 = (unsigned int)duty;
 }
 
 #if 0

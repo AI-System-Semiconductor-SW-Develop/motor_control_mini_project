@@ -1,9 +1,9 @@
 #include "device_driver.h"
 #include <stdio.h>
 
-static void Sys_Init(int baud) 
+static void Sys_Init(int baud)
 {
-	SCB->CPACR |= (0x3 << 10*2)|(0x3 << 11*2); 
+	SCB->CPACR |= (0x3 << 10*2)|(0x3 << 11*2);
 	Clock_Init();
 	Uart2_Init(baud);
 	Uart1_Init(baud);
@@ -11,339 +11,91 @@ static void Sys_Init(int baud)
 	LED_Init();
 }
 
-#if 1 	//REV 1.1
 /*
-모터 방향 버튼 제어, 3초 이상 누르면 정지
-	- 버튼을 떼지 않아도 3초가 지나면 정지
+ * REV 1.1-fix
+ *  - 버튼 짧게 누름: STOP → CW, CW/CCW → 300ms 정지 후 반대 방향
+ *  - 버튼 3초 길게 누름: 떼지 않아도 어느 상태에서든 STOP (방향 전환 대기도 취소)
+ *  - UART '1'~'9': PWM 듀티 50~90% (5% 단위)
+ *  - ISR은 이벤트/값만 저장, 상태 전환과 로그 출력은 메인 루프에서 처리
+ *  (이전 리비전 코드는 git 기록 참고)
+ */
 
-모터 속도 PWM, UART로 제어
-
-이벤트 처리에 인터럽트 사용
-
-루프에 갇히지 않도록 설계
-*/
-
-/* Global Variable Definition */
-volatile KEY_STATE key_state = 0U;		//Key Press/Release INT flag
-
-volatile int TIM2_Expired = 0U;			//TIM2 Expired INT flag
-volatile int TIM4_Expired = 0U;			//TIM4 Expired INT flag
-
-volatile int Uart_Data_In = 0U;			//UART INT flag
+/* ISR ↔ 메인 공유 변수 */
+volatile int TIM2_Expired = 0;			// 3초 길게 누름 만료
+volatile int TIM4_Expired = 0;			// 방향 전환 대기 만료
+volatile int Uart_Data_In = 0;			// 유효한 속도 명령 수신
+volatile int Uart_Bad_Input = 0;		// 잘못된 문자 수신
+volatile int Uart_Overrun = 0;			// UART 오버런 발생
 volatile MOTOR_SPEED curr_motor_speed = SPD_5;
-;
+volatile MOTOR_STATE next_state = STOP;	// SHORT_STOP 이후 진행할 방향
 
-volatile MOTOR_STATE next_state = 0;
+extern volatile int Key_Q_Overflow;
 
+/* 플래그를 읽고 지우는 사이에 ISR이 끼어들어 이벤트를 덮지 않도록 원자적으로 처리 */
+static int take_flag(volatile int *flag)
+{
+	int v;
+	__disable_irq();
+	v = *flag;
+	*flag = 0;
+	__enable_irq();
+	return v;
+}
 
 void Main(void)
 {
 	/* 초기화 */
 	Sys_Init(115200);
 	GPIO_Init();
-	TIM5_Out_Init();					//PWM Enable
-	printf("\nMotor_test_rev1.1\n");
-			
-	/* Variable Definition */
-	MOTOR_STATE motor_state = STOP;		// 모터 상태 정지로 초기화
-	int is_timer_started = 0; 			// 타이머가 현재 동작 중인지, 1: 동작중(타임아웃 이전)
+	TIM5_PWM_Init(curr_motor_speed);	// PWM은 계속 동작, 핀 연결은 GPIO 모드로 결정
+	printf("\nMotor_test_rev1.1-fix\n");
+
+	MOTOR_STATE motor_state = STOP;
+	int is_timer_started = 0;			// 1: 3초 타이머 동작 중(아직 만료 전)
 
 	/* Interrupt Enable */
-	Key_ISR_Enable(1);					//Key Rising/Fallind Edge INT
-	Uart2_RX_Interrupt_Enable();		//Uart RX INT Enable
-	//TIM2, TIM4는 타이머 실행 함수에 INT를 함께 허용해놓아서 다로 Enable함수를 호춣하지 않음.
+	Key_ISR_Enable(1);					// PC13 Falling/Rising EXTI
+	Uart2_RX_Interrupt_Enable();		// USART2 RX interrupt
+	// TIM2, TIM4 인터럽트는 각 타이머 시작 함수에서 허용
 
-	TIM5_PWM_Generation(curr_motor_speed);	//PWM 기본 duty 설정: 70
-	
 	for (;;) {
 
-		//Falling Edge INT
-		if (key_state == IS_PRESSED) {
-			key_state = KEY_IDLE;
-			printf("button pressed\n");
-			
-			TIM2_3sec_Timer_Start();		// 3초 타이머 시작
-			is_timer_started = 1;
+		/* ① 3초 만료를 버튼 뗌보다 먼저 처리
+		 *    → 정확히 3초 무렵에 뗐을 때 방향 전환과 정지가 함께 실행되지 않음 */
+		if (take_flag(&TIM2_Expired)) {
+			is_timer_started = 0;
+			Motor_Stop();				// TIM4(방향 전환 대기)도 함께 취소
+			motor_state = STOP;
+			printf("long press: STOP\n");
 		}
-		//Rising Edge INT
-		else if (key_state == IS_RELEASED) {
-			key_state = KEY_IDLE;
-			printf("button released\n");
-			
-			if (is_timer_started){			//타임아웃 X, 타이머 동작중
-				TIM2_Stop();
-				is_timer_started = 0;
 
-				Toggle_Motor_State(&motor_state);
+		/* ② 버튼 이벤트는 큐에서 순서대로 꺼냄 (짧은 누름 유실 방지) */
+		KEY_STATE key;
+		while ((key = Key_Event_Pop()) != KEY_IDLE) {
+			if (key == IS_PRESSED) {
+				TIM2_3sec_Timer_Start();
+				is_timer_started = 1;
+			}
+			else if (key == IS_RELEASED && is_timer_started) {
+				TIM2_Stop();			// 정지 직전 세워진 만료 플래그까지 제거
+				is_timer_started = 0;
+				Toggle_Motor_State(&motor_state);	// SHORT_STOP 중이면 무시
 			}
 		}
 
-		//Timer Expired
-		if (TIM2_Expired) {
-			printf("is timeout\n");
-
-			TIM2_Expired = 0;
-			is_timer_started = 0;
-
-			Motor_Stop();
-			motor_state = STOP;
-		}
-
-		if (TIM4_Expired){
-			TIM4_Expired = 0;
-
+		/* ③ 방향 전환 대기 만료: SHORT_STOP 상태일 때만 재개 */
+		if (take_flag(&TIM4_Expired))
 			Toggle_with_Short_Stop(&motor_state, next_state);
-		}
-		
-		//UART2 RX Interrupt
-		if (Uart_Data_In){
-			Uart_Data_In = 0;
 
-			TIM5_PWM_Generation(curr_motor_speed);
+		/* ④ 속도 변경: CCR만 갱신 */
+		if (take_flag(&Uart_Data_In)) {
+			TIM5_Set_Duty(curr_motor_speed);
+			printf("motor speed: %d%%\n", (int)curr_motor_speed);
 		}
+
+		/* ⑤ 경고·오류 로그 (ISR 밖에서 출력) */
+		if (take_flag(&Uart_Bad_Input))	printf("SPEED SET WRONG: use 1~9\n");
+		if (take_flag(&Uart_Overrun))	printf("UART overrun\n");
+		if (take_flag(&Key_Q_Overflow))	printf("key event queue overflow\n");
 	}
 }
-#endif
-
-#if 0 //REV 1.0
-
-void Main(void)
-{
-	Sys_Init(115200);
-	GPIO_Init();
-	printf("Motor test_3sec_stop_v2\n");
-	Key_ISR_Enable(1);	//버튼이 눌리면 인터럽트
-	
-	MOTOR_STATE motor_state = STOP;				//모터 상태 정지로 초기화
-	BTN_STATE curr_btn_state = IS_RELEASED; 	//이전 버튼 상태 초기화: released
-	BTN_STATE prev_btn_state = curr_btn_state;	//현재 버튼 상태 초기화: released
-	int is_timer_started = 0; // 타이머가 현재 동작 중인지, 1: 동작중(타임아웃 이전)
-
-	for (;;) {
-
-		prev_btn_state = curr_btn_state;	//버튼 상태 반영
-		curr_btn_state = Key_Get_Pressed();	//버튼 상태 반영
-		int is_timer_timeout = TIM2_Check_Timeout();
-
-		//Falling Edge(Button Pressed)
-		if (prev_btn_state == IS_RELEASED && curr_btn_state == IS_PRESSED) {
-			printf("button pressed\n");
-
-			TIM2_3sec_Timer_Start();      // 3초 타이머 시작
-			is_timer_started = 1;
-		}
-		//Rising Edge(Button Released)
-		else if (prev_btn_state == IS_PRESSED && curr_btn_state == IS_RELEASED) {
-			printf("button released\n");
-			
-			if (is_timer_started){	//타임아웃 X, 타이머 동작중
-				TIM2_Stop();
-				is_timer_started = 0;
-
-				Toggle_Motor_State(&motor_state);
-			}
-		}
-
-		//Timer Expired
-		if (is_timer_timeout) {
-			printf("is timeout\n");
-			is_timer_started = 0;
-
-			Motor_Stop();
-			motor_state = STOP;
-		}
-	}
-}
-#endif
-
-#if 0 //모터 방향 버튼 제어, Pressed 상태도 3초 이상 누르면 정지
-// 버튼을 떼지 않아도 3초가 지나면 끝나도록.
-// 루프에 갇히지 않게.
-
-void Main(void)
-{
-	Sys_Init(115200);
-	GPIO_Init();
-	printf("Motor test_3sec_stop_v2\n");
-
-	enum Motor_state state = STOP;
-
-	int prev_btn = 0;	//이전 버튼 상태, Release: 0, Press: 1
-	int is_timer_started = 0; // 타이머가 현재 동작 중인지
-
-	for (;;) {
-
-		int current_btn = !Macro_Extract_Area(GPIOC->IDR, 0x1, 13);
-		int is_timeout = TIM2_Check_Timeout();
-
-		//Falling Edge(Button Pressed)
-		if (prev_btn == 0 && current_btn) {
-			prev_btn = 1;
-			printf("button pressed\n");
-
-			TIM2_One_Shot();      // 3초 타이머 시작
-			is_timer_started = 1;
-		}
-		//Rising Edge(Button Released)
-		else if (prev_btn == 1 && current_btn == 0) {
-			prev_btn = 0;
-			printf("button released\n");
-
-			if (is_timer_started) {
-				is_timer_started = 0;
-				TIM2_Stop();
-
-				Toggle_Motor_State(&state);
-			}
-		}
-
-		//Timer Expired
-		if (is_timeout) {
-			printf("is timeout\n");
-			is_timer_started = 0;
-
-			Motor_Stop();
-			state = STOP;
-		}
-	}
-}
-
-#endif
-
-#if 0 //모터 방향 UART 제어
-void Main(void)
-{
-	Sys_Init(115200);
-	printf("Motor test_UART\n");
-	Uart1_Init(115200);
-
-    Macro_Set_Bit(RCC->AHB1ENR, 0);	//GPIOA En
-	Macro_Set_Bit(RCC->AHB1ENR, 3);	//GPIOC En
-
-    Macro_Write_Block(GPIOA->MODER,0xf, 0x5, 0);	//PA0, PA1 General output
-    Macro_Write_Block(GPIOA->OTYPER, 0x3, 0x0, 0);	//PA0, PA1 Push-pull
-	Macro_Write_Block(GPIOC->MODER,0x3, 0x0, 26);	//key mode input
-	
-	char x;
-
-	for (;;){
-
-		while(!Macro_Check_Bit_Set(USART1->SR, 7));
-		USART1->DR = x;
-		while(!Macro_Check_Bit_Set(USART1->SR, 5));
-		x = USART1->DR;
-		
-		if(x == 'S' || x == 's'){
-			Macro_Write_Block(GPIOA->ODR, 0x3, 0x3, 0);
-			printf("정지\n");
-		}
-		else if(x == 'F' || x == 'f'){
-			Macro_Write_Block(GPIOA->ODR, 0x3, 0x3, 0);
-			TIM4_Delay(500);
-			Macro_Write_Block(GPIOA->ODR, 0x3, 0x2, 0);
-			printf("정방향\n");
-		}
-		else if(x == 'B' || x == 'b'){
-			Macro_Write_Block(GPIOA->ODR, 0x3, 0x3, 0);
-			TIM4_Delay(500);
-			Macro_Write_Block(GPIOA->ODR, 0x3, 0x1, 0);
-			printf("역방향\n");
-		}
-	}	
-}
-#endif
-
-#if 0 //모터 방향 버튼 제어, 3초 이상 누르면 정지
-void Main(void)
-{
-	Sys_Init(115200);
-	printf("Motor test_3sec_stop\n");
-	Uart1_Init(115200);
-
-    Macro_Set_Bit(RCC->AHB1ENR, 0);	//GPIOA En
-	Macro_Set_Bit(RCC->AHB1ENR, 3);	//GPIOC En
-
-    Macro_Write_Block(GPIOA->MODER,0xf, 0x5, 0);	//PA0, PA1 General output
-    Macro_Write_Block(GPIOA->OTYPER, 0x3, 0x0, 0);	//PA0, PA1 Push-pull
-	Macro_Write_Block(GPIOC->MODER,0x3, 0x0, 26);	//key mode input
-
-	int CW = 0;	//0: CW, 1: CCW
-	int btn_flag = 0;
-	unsigned int time = 0;
-
-
-	for (;;){
-		if (Macro_Check_Bit_Clear(GPIOC->IDR, 13))
-		{
-			TIM2_Stopwatch_Start();
-			while(!Macro_Check_Bit_Set(GPIOC->IDR, 13));
-			time = TIM2_Stopwatch_Stop();
-			printf("time: %d", time);
-			btn_flag = 1;
-
-			if(btn_flag == 1){
-				btn_flag = 0;
-
-				if(time >= 3000000){
-				Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-				printf("3초 초과");
-				}
-				else{
-					printf("3초 미만");
-
-					if(CW == 0){		//정방향
-						printf("정방향");
-						Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-						TIM2_Delay(1000);
-						Macro_Write_Block(GPIOA->ODR, 0x3, 0x1, 0);
-						CW = 1;
-					}
-					else if(CW == 1){	//역방향
-						printf("역방향");
-						Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-						TIM2_Delay(1000);
-						Macro_Write_Block(GPIOA->ODR, 0x3, 0x2, 0);
-						CW = 0;
-					}
-				}
-				time = 0;
-			}
-		}		
-	}
-}	
-#endif
-
-#if 0 //모터 방향 버튼 제어
-void Main(void)
-{
-	Sys_Init(115200);
-	printf("Motor test\n");
-	Uart1_Init(115200);
-
-    Macro_Set_Bit(RCC->AHB1ENR, 0);	//GPIOA En
-	Macro_Set_Bit(RCC->AHB1ENR, 3);	//GPIOC En
-
-    Macro_Write_Block(GPIOA->MODER,0xf, 0x5, 0);	//PA0, PA1 General output
-    Macro_Write_Block(GPIOA->OTYPER, 0x3, 0x0, 0);	//PA0, PA1 Push-pull
-	Macro_Write_Block(GPIOC->MODER,0x3, 0x0, 26);	//key mode input
-
-	int lock = 0;
-
-	for (;;){
-			if((lock == 0) && (Macro_Check_Bit_Clear(GPIOC->IDR, 13))){
-				Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-				TIM2_Delay(1000);
-				Macro_Write_Block(GPIOA->ODR, 0x3, 0x1, 0);
-				lock = 1;
-			}
-			else if((lock == 1) && (Macro_Check_Bit_Clear(GPIOC->IDR, 13))){
-				Macro_Write_Block(GPIOA->ODR, 0x3, 0x0, 0);
-				TIM2_Delay(1000);
-				Macro_Write_Block(GPIOA->ODR, 0x3, 0x2, 0);
-				lock = 0;
-			}
-	}
-
-}	
-
-#endif

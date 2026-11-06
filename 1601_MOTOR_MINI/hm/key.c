@@ -45,3 +45,40 @@ void Key_ISR_Enable(int en)
 		NVIC_DisableIRQ(EXTI15_10);
 	}
 }
+
+/*
+ * 버튼 이벤트 큐 (EXTI ISR → 메인 루프, 생산자 1·소비자 1)
+ *  - 변수 하나(key_state)만 쓰면 메인이 처리하기 전에 누름이 뗌으로 덮여 짧은 누름을 놓친다.
+ *  - head는 ISR만, tail은 메인만 쓰므로 인터럽트를 막지 않아도 안전하다.
+ */
+#define KEY_Q_SIZE	8U					// 2의 거듭제곱
+#define KEY_Q_MASK	(KEY_Q_SIZE - 1U)
+
+static volatile KEY_STATE key_q[KEY_Q_SIZE];
+static volatile unsigned int key_q_head = 0;	// ISR이 씀
+static volatile unsigned int key_q_tail = 0;	// 메인이 씀
+volatile int Key_Q_Overflow = 0;
+
+void Key_Event_Push(KEY_STATE ev)		// ISR 전용
+{
+	unsigned int next = (key_q_head + 1U) & KEY_Q_MASK;
+
+	if (next == key_q_tail) {			// 가득 참: 새 이벤트 버림, 사실은 기록
+		Key_Q_Overflow = 1;
+		return;
+	}
+	key_q[key_q_head] = ev;
+	key_q_head = next;
+}
+
+KEY_STATE Key_Event_Pop(void)			// 메인 루프 전용
+{
+	KEY_STATE ev;
+
+	if (key_q_tail == key_q_head)
+		return KEY_IDLE;
+
+	ev = key_q[key_q_tail];
+	key_q_tail = (key_q_tail + 1U) & KEY_Q_MASK;
+	return ev;
+}
